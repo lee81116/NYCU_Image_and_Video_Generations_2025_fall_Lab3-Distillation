@@ -21,6 +21,43 @@
 
 ---
 
+## Description
+
+Score Distillation Sampling (SDS) is a technique used in generative models (diffusion) that leverages a pretrained model to guide generation by distilling the score (how well a sample aligns with the target distribution) back into the sampling/optimization. In this assignment we focus on **text-to-image generation** with SDS and its variants **SDI** and **VSD**.
+
+Unlike the reverse denoising process, *distillation sampling* parameterizes the target content (e.g., images) and optimizes its parameters based on a predefined loss function derived from the diffusion model’s score prediction.
+
+---
+
+## Setup
+
+```bash
+conda create -n lab3 python=3.9
+conda activate lab3
+pip install -r requirements.txt
+```
+
+---
+
+## Code Structure
+
+```
+.
+├── asset/                    # images for README (teaser, method figs)
+├── data/
+│   └── prompt_img_pairs.json # prompts used by eval scripts
+├── guidance/
+│   └── sd.py                 # implement: get_sds_loss / get_sdi_loss / get_vsd_loss
+├── eval.py                   # CLIP evaluation
+├── eval.sh                   # unified evaluator (SDS / SDI / VSD)
+├── main.py                   # training/optimization entry
+├── utils.py                  # helpers (I/O, image save)
+├── requirements.txt
+└── README.md
+```
+
+---
+
 ## Task 0: Introduction
 
 Distillation sampling parameterizes the target content (e.g., images) and optimizes the parameters using the gradient of the distillation loss function $\nabla_{x^0}L$. In this assignment, we denote $c$ as a text prompt, $x^\prime$ as a noisy sample, $\epsilon$ as a random sample from a standard Gaussian distribution, and $\epsilon_\theta(\cdot, \cdot, \cdot)$ as a pretrained diffusion model that predicts the noise in the input.

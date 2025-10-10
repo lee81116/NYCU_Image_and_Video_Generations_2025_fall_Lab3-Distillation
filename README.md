@@ -37,9 +37,9 @@ We focus on **text-to-image generation** using diffusion distillation methods (n
 
 Score Distillation Sampling distills gradients from a pretrained diffusion model by comparing the predicted and sampled noises:
 
-[
+$$
 \nabla_{x^0} L_{\text{sds}} = \mathbb{E}*{t,,\epsilon}\big[,\epsilon*\theta(x^t, c, t) - \epsilon,\big]
-]
+$$
 
 ### ✅ TODO
 
@@ -63,9 +63,9 @@ python main.py --prompt "${PROMPT}" --loss_type sds --guidance_scale 25
 
 Score Distillation via Inversion (SDI) improves SDS stability by performing **DDIM inversion** before computing score differences:
 
-[
+$$
 \nabla_{x^0} L_{\text{sdi}} = \mathbb{E}*{t,,\epsilon}\big[,\epsilon*\theta(x^t, c, t) - \epsilon_{\text{inv}},\big]
-]
+$$
 
 ### ✅ TODO
 
@@ -89,9 +89,10 @@ python main.py --prompt "${PROMPT}" --loss_type sdi --guidance_scale 25
 
 Variational Score Distillation introduces a **LoRA-parameterized UNet** to reduce the discrepancy between the pretrained model and optimized latents:
 
-[
+$$
 \nabla_{x^0} L_{\text{vsd}} = \mathbb{E}*{t,,\epsilon}\big[,\epsilon*\theta(x^t, c, t) - \epsilon_{\phi}(x^t, c, t),\big]
-]
+$$
+
 where $\phi$ are LoRA parameters.
 
 ### ✅ TODO

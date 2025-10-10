@@ -25,7 +25,7 @@
 
 Distillation sampling parameterizes the target content (e.g., images) and optimizes the parameters using the gradient of the distillation loss function $\nabla_{x^0}L$. In this assignment, we denote $c$ as a text prompt, $x^\prime$ as a noisy sample, $\epsilon$ as a random sample from a standard Gaussian distribution, and $\epsilon_\theta(\cdot, \cdot, \cdot)$ as a pretrained diffusion model that predicts the noise in the input.
 
-We focus on **text-to-image generation** using diffusion distillation methods, rather than editing tasks. For inference, use the `data/prompt_img_pairs.json`, which contains test prompts for evaluation. For each task, implement the corresponding loss function in `guidance/sd.py`. Use a fixed guidance scale for each task: **25 for SDS/SDI and 7.5 for VSD**.
+We focus on **text-to-image generation** using diffusion distillation methods (no editing tasks). For inference, use `data/prompt_img_pairs.json`, which contains test prompts for evaluation. For each task, implement the corresponding loss function in `guidance/sd.py`. Use a fixed guidance scale for each task: **25 for SDS/SDI and 7.5 for VSD**.
 
 ---
 
@@ -36,9 +36,10 @@ We focus on **text-to-image generation** using diffusion distillation methods, r
 </p>
 
 Score Distillation Sampling distills gradients from a pretrained diffusion model by comparing the predicted and sampled noises:
-$$
-\nabla_{x^0} L_{sds} = \mathbb{E}*{t, \epsilon}[\epsilon*\theta(x^t, c, t) - \epsilon]
-$$
+
+[
+\nabla_{x^0} L_{\text{sds}} = \mathbb{E}*{t,,\epsilon}\big[,\epsilon*\theta(x^t, c, t) - \epsilon,\big]
+]
 
 ### ✅ TODO
 
@@ -49,7 +50,7 @@ It should return the computed SDS loss.
 ### 💻 Run Command
 
 ```bash
-python main.py --prompt "{$PROMPT}" --loss_type sds --guidance_scale 25
+python main.py --prompt "${PROMPT}" --loss_type sds --guidance_scale 25
 ```
 
 ---
@@ -61,20 +62,21 @@ python main.py --prompt "{$PROMPT}" --loss_type sds --guidance_scale 25
 </p>
 
 Score Distillation via Inversion (SDI) improves SDS stability by performing **DDIM inversion** before computing score differences:
-$$
-\nabla_{x^0} L_{sdi} = \mathbb{E}*{t, \epsilon}[\epsilon*\theta(x^t, c, t) - \epsilon_{inv}]
-$$
+
+[
+\nabla_{x^0} L_{\text{sdi}} = \mathbb{E}*{t,,\epsilon}\big[,\epsilon*\theta(x^t, c, t) - \epsilon_{\text{inv}},\big]
+]
 
 ### ✅ TODO
 
 Implement `get_sdi_loss()` in `guidance/sd.py`.
-The function reconstructs the forward path using DDIM inversion and compares the predicted noise with the inverted noise $\epsilon_{inv}$.
+The function reconstructs the forward path using DDIM inversion and compares the predicted noise with the inverted noise $\epsilon_{\text{inv}}$.
 Return the computed SDI loss.
 
 ### 💻 Run Command
 
 ```bash
-python main.py --prompt "{$PROMPT}" --loss_type sdi --guidance_scale 25
+python main.py --prompt "${PROMPT}" --loss_type sdi --guidance_scale 25
 ```
 
 ---
@@ -86,9 +88,10 @@ python main.py --prompt "{$PROMPT}" --loss_type sdi --guidance_scale 25
 </p>
 
 Variational Score Distillation introduces a **LoRA-parameterized UNet** to reduce the discrepancy between the pretrained model and optimized latents:
-$$
-\nabla_{x^0} L_{vsd} = \mathbb{E}*{t, \epsilon}[\epsilon*\theta(x^t, c, t) - \epsilon_\phi(x^t, c, t)]
-$$
+
+[
+\nabla_{x^0} L_{\text{vsd}} = \mathbb{E}*{t,,\epsilon}\big[,\epsilon*\theta(x^t, c, t) - \epsilon_{\phi}(x^t, c, t),\big]
+]
 where $\phi$ are LoRA parameters.
 
 ### ✅ TODO
@@ -99,8 +102,9 @@ The function should compute the difference between pretrained and LoRA noise pre
 ### 💻 Run Command
 
 ```bash
-python main.py --prompt "{$PROMPT}" --loss_type vsd --guidance_scale 7.5 --lora_lr 1e-4 --lora_loss_weight 1.0
+python main.py --prompt "${PROMPT}" --loss_type vsd --guidance_scale 7.5 --lora_lr 1e-4 --lora_loss_weight 1.0
 ```
+
 Refer to `data/prompt_img_pairs.json` for `prompt`.
 
 ---
@@ -118,8 +122,8 @@ Use the unified evaluation script `eval.sh`:
 Each command will:
 
 1. Generate results for all default prompts.
-3. Run CLIP evaluation automatically.
-4. Save final results to:
+2. Remove intermediate step images.
+3. Run CLIP evaluation automatically and save final results to:
 
 ```
 ./outputs/{loss_type}/
@@ -142,31 +146,31 @@ Submit `{STUDENT_ID}_lab3.zip` containing:
 
 ### Report (20 pts)
 
-* Explain SDS, SDI, and VSD — both the concept and your implementation (code).
-* Compare visual and CLIP results.
-* Intuitively analyze why SDI improves stability and why VSD improves fidelity and diversity **(without heavy math)**.
-* Discuss the influence of hyperparameters (guidance scale, steps...).
+* **Explain SDS, SDI, and VSD — both the concept and your implementation (code).**
+* **Compare visual and CLIP results.**
+* **Intuitively analyze** why SDI improves stability and why VSD improves fidelity and diversity (**without heavy math**).
+* **Discuss** the influence of hyperparameters (guidance scale, steps, learning rate, LoRA rank).
 
 ---
 
 ## Grading
 
-| Component             | Points  | Description                               |
-| --------------------- | ------- | ----------------------------------------- |
-| Task 1 – SDS          | 20      | Correct implementation + results                    |
-| Task 2 – SDI          | 30      | Correct implementation + results         |
-| Task 3 – VSD          | 30      | Correct implementation + results |
-| Report                | 20      | Clear analysis, comparisons, insights     |
-| **Total**             | **100** |                                           |
+| Component    | Points  | Description                           |
+| ------------ | ------- | ------------------------------------- |
+| Task 1 – SDS | 20      | Correct implementation + results      |
+| Task 2 – SDI | 30      | Correct implementation + results      |
+| Task 3 – VSD | 30      | Correct implementation + results      |
+| Report       | 20      | Clear analysis, comparisons, insights |
+| **Total**    | **100** |                                       |
 
 ### CLIP Score Thresholds
 
-| CLIP Score | SDS (20) | SDI/VSD (30 pts) |
-| ---------- | ------------------- | ------------ |
-| ≥ 0.28     | Full credit         | Full credit  |
-| 0.26–0.28  | 75% credit          | 25 pts       |
-| 0.24–0.26  | 50% credit          | 20 pts       |
-| < 0.24     | 0                   | 0            |
+| CLIP Score | SDS (20 pts) | SDI/VSD (30 pts) |
+| ---------- | ------------ | ---------------- |
+| ≥ 0.28     | Full credit  | Full credit      |
+| 0.26–0.28  | 75% credit   | 25 pts           |
+| 0.24–0.26  | 50% credit   | 20 pts           |
+| < 0.24     | 0            | 0                |
 
 ---
 
@@ -179,7 +183,7 @@ Submit `{STUDENT_ID}_lab3.zip` containing:
 
 ## References
 
-* https://github.com/KAIST-Visual-AI-Group/Diffusion-Assignment4-Distillation/tree/main 
+* [https://github.com/KAIST-Visual-AI-Group/Diffusion-Assignment4-Distillation/tree/main](https://github.com/KAIST-Visual-AI-Group/Diffusion-Assignment4-Distillation/tree/main)
 * [DreamFusion: Text-to-3D using 2D Diffusion](https://arxiv.org/abs/2209.14988)
 * [ProlificDreamer: Variational Score Distillation](https://arxiv.org/abs/2305.16213)
 * [Score Distillation via Inversion (SDI)](https://arxiv.org/abs/2312.02164)

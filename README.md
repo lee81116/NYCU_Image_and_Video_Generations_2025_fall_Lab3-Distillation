@@ -152,9 +152,9 @@ Refer to `data/prompt_img_pairs.json` for `prompt`.
 Use the unified evaluation script `eval.sh`:
 
 ```bash
-./eval.sh --sds
-./eval.sh --sdi
-./eval.sh --vsd --guidance 7.5
+bash eval.sh --sds
+bash eval.sh --sdi
+bash eval.sh --vsd --guidance 7.5
 ```
 
 Each command will:

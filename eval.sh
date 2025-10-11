@@ -87,7 +87,6 @@ for prompt in "${PROMPTS[@]}"; do
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
       --step "$STEPS" \
-      --precision fp16 \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR" \
       --lora_lr "$LORA_LR" \
@@ -100,7 +99,6 @@ for prompt in "${PROMPTS[@]}"; do
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
       --step "$STEPS" \
-      --precision fp16 \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR"
   fi

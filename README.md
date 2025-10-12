@@ -212,8 +212,9 @@ Submit `{STUDENT_ID}_lab3.zip` containing:
 1. **Explain** SDS, VSD, and SDI — both the *concept* and your *implementation (code)*.  
 2. **Compare** visual and CLIP results.  
 3. **Intuitively analyze** why SDI and VSD perform better than SDS (**without heavy math**).  
-4. **Discuss** the influence of hyperparameters.  
-   - You may Include any factors you think are worth ablation (e.g., guidance scale, steps, learning rate, LoRA rank, eta, inversion steps, update interval).
+4. **Discuss** the influence of hyperparameters — **pick your own ablations** and justify them.  
+   - Examples (not exhaustive): guidance scale, steps, learning rate, LoRA rank, eta, inversion steps, update interval.
+
 
 
 ---

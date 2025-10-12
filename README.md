@@ -132,7 +132,7 @@ SDI improves SDS stability by performing **DDIM inversion** before computing sco
 
 $$
 \begin{aligned}
-&\textbf{for each } t = T,\dots,1:\\[2pt]
+&\textbf{for each } t = T,\dots,1:\\
 \text{(1)}\;& c \sim \mathcal{U}(\mathcal{C})\\
 \text{(2)}\;& x_{0\mid t} = g(\theta;\,c)\\
 \text{(3)}\;& x_t = \mathrm{DDIM\_Inversion}\!\left(x_{0\mid t},\, t\right)\\
@@ -143,6 +143,7 @@ $$
 \text{(6)}\;& \theta \leftarrow \theta - \eta\,\nabla_\theta\,\big\|\,x_{0\mid t-1}-g(\theta;\,c)\big\|^2
 \end{aligned}
 $$
+
 
 
 
@@ -167,7 +168,7 @@ Implement **`get_sdi_loss()`** in `guidance/sd.py`, and **complete all in-functi
 
 ### 💻 Run Command
 ```
-python main.py --prompt "${PROMPT}" --loss_type sdi --guidance_scale 7.5 \
+python main.py --prompt "${PROMPT}" --loss_type sdi --lr 0.005 --steps 1000 --guidance_scale 7.5 \
                --inversion_n_steps 10 --inversion_guidance_scale -7.5 \
                --inversion_eta 0.3 --sdi_update_interval 25
 ```
@@ -180,7 +181,7 @@ Use the unified evaluation script `eval.sh`:
 ```
 bash eval.sh --sds
 bash eval.sh --vsd --guidance 7.5 --lora-lr 1e-4 --lora-loss-weight 1.0 --lora-rank 4
-bash eval.sh --sdi --guidance 25 \
+bash eval.sh --sdi --guidance 7.5 --lr 0.005 --steps 1000 \
              --inversion-n-steps 10 --inversion-guidance-scale -7.5 \
              --inversion-eta 0.3 --sdi-update-interval 25
 ```
@@ -211,8 +212,8 @@ Submit `{STUDENT_ID}_lab3.zip` containing:
 1. **Explain** SDS, VSD, and SDI — both the *concept* and your *implementation (code)*.  
 2. **Compare** visual and CLIP results.  
 3. **Intuitively analyze** why SDI and VSD perform better than SDS (**without heavy math**).  
-4. **Discuss** the influence of hyperparameters (guidance scale, steps, learning rate, LoRA rank, etc.).  
-   - Include any other factors you think are worth ablation (e.g., eta, inversion steps, update interval, LoRA rank/weight, scheduler choices).
+4. **Discuss** the influence of hyperparameters.  
+   - You may Include any factors you think are worth ablation (e.g., guidance scale, steps, learning rate, LoRA rank, eta, inversion steps, update interval).
 
 
 ---

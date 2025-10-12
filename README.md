@@ -155,11 +155,7 @@ $$
 
 Implement **`get_sdi_loss()`** in `guidance/sd.py`, and **complete all in-function `TODO` items**.  
 
-**Arguments (aligned with `main.py` / function signature):**
-- `latents`: current clean latents \(x_0\), shape `(B, 4, H, W)`.
-- `text_embeddings`: concatenated **[uncond; cond]** embeddings for CFG, shape `(2*B, L, D)`.
-- `guidance_scale` (default **7.5**): CFG scale used for **noise prediction** at time `t` (larger → stronger text alignment, may oversaturate).
-- `current_iter`, `total_iters`: used to compute the **annealed timestep** `t` (large→small over training).
+**Additional Arguments:**
 - `inversion_guidance_scale` (default **-7.5**): CFG scale used **during DDIM inversion** (often negative for stable inversion).
 - `inversion_n_steps` (default **10**): number of inversion steps from `x₀` to `x_t` (more steps = more accurate, slower).
 - `inversion_eta` (default **0.3**): stochasticity of inversion (`0` = deterministic DDIM).

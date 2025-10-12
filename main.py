@@ -53,8 +53,7 @@ def run(args):
     cond_embeddings = model.get_text_embeds(args.prompt)
     uncond_embeddings = model.get_text_embeds(args.negative_prompt)
     text_embeddings = torch.cat([uncond_embeddings, cond_embeddings])
-    
-    # Initialize latents with random Gaussian for generation
+  
     latents = nn.Parameter(
         torch.randn(1, 4, 64, 64, device=device, dtype=args.precision)
     )
@@ -65,12 +64,11 @@ def run(args):
         optimizer = torch.optim.AdamW(
             [
                 {'params': [latents], 'lr': args.lr},
-                {'params': model.lora_layers, 'lr': args.lora_lr}  # lora_layers is now a list
+                {'params': model.lora_layers, 'lr': args.lora_lr}
             ],
             weight_decay=0
         )
     else:
-        # SDS and SDI only optimize latents
         optimizer = torch.optim.AdamW([latents], lr=args.lr, weight_decay=0)
 
     scheduler = get_cosine_schedule_with_warmup(optimizer, 100, int(steps*1.5))
@@ -92,7 +90,11 @@ def run(args):
                 text_embeddings=text_embeddings,
                 guidance_scale=guidance_scale,
                 current_iter=step,
-                total_iters=steps
+                total_iters=steps,
+                inversion_guidance_scale=args.inversion_guidance_scale,
+                inversion_n_steps=args.inversion_n_steps,
+                inversion_eta=args.inversion_eta,
+                update_interval=args.sdi_update_interval,
             )
             
         elif args.loss_type == "vsd":
@@ -108,6 +110,9 @@ def run(args):
         
         # Backward
         loss.backward()
+        
+        # Gradient clipping
+        torch.nn.utils.clip_grad_norm_([latents], max_norm=1.0)
 
         # Update optimizers
         optimizer.step()
@@ -140,11 +145,23 @@ def parse_args():
     parser.add_argument("--step", type=int, default=500)
     
     parser.add_argument("--device", type=int, default=0)
-    parser.add_argument("--lr", type=float, default=1e-1, help="Learning rate for latents")
+    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate for latents (default: 0.01)")
+    
+    # SDI specific parameters
+    parser.add_argument("--inversion_n_steps", type=int, default=10,
+                        help="Number of DDIM inversion steps for SDI (default: 10)")
+    parser.add_argument("--inversion_guidance_scale", type=float, default=-7.5,
+                        help="Guidance scale for inversion in SDI (negative, default: -7.5)")
+    parser.add_argument("--inversion_eta", type=float, default=0.3,
+                        help="Noise perturbation strength in SDI (default: 0.3)")
+    parser.add_argument("--sdi_update_interval", type=int, default=25,
+                        help="Update target every N steps in SDI (default: 25)")
     
     # VSD specific parameters
     parser.add_argument("--lora_lr", type=float, default=1e-4, 
                         help="Learning rate for LoRA in VSD")
+    parser.add_argument("--lora_weight_decay", type=float, default=1e-4, 
+                        help="Weight decay for LoRA")
     parser.add_argument("--lora_loss_weight", type=float, default=1.0, 
                         help="Weight for LoRA denoising loss in VSD")
     parser.add_argument("--lora_rank", type=int, default=4, 
@@ -172,7 +189,15 @@ def main():
     print(f"[*] Running {args.loss_type}")
     print(f"[*] Prompt: {args.prompt}")
     print(f"[*] Guidance scale: {args.guidance_scale}")
+    print(f"[*] Learning rate: {args.lr}")
     print(f"[*] Steps: {args.step}")
+    
+    if args.loss_type == "sdi":
+        print(f"[*] SDI Parameters:")
+        print(f"    - Update interval: every {args.sdi_update_interval} steps")
+        print(f"    - Inversion n_steps: {args.inversion_n_steps}")
+        print(f"    - Inversion guidance scale: {args.inversion_guidance_scale}")
+        print(f"    - Inversion eta: {args.inversion_eta}")
 
     run(args)
     

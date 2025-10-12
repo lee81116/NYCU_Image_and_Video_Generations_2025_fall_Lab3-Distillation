@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # ---------------------------
-# Unified evaluator for SDS / SDI / VSD
-# Default: guidance = 25
+# Unified evaluator for SDS / VSD / SDI  (Task 1 / Task 2 / Task 3)
+# Default guidance = 25 （可用 --guidance 覆蓋；VSD 建議 7.5）
+# 支援 SDI/VSD 參數，名稱與 main.py 一致
 # ---------------------------
 
 LOSS=""
@@ -14,17 +15,31 @@ NEGATIVE_PROMPT="low quality"
 PROMPTS_FILE=""
 SAVE_ROOT="./outputs"
 
-# VSD hyperparams
+# ---- VSD: LoRA hyperparams ----
 LORA_LR=1e-4
 LORA_LOSS_WEIGHT=1.0
 LORA_RANK=4
 
+# ---- SDI: inversion hyperparams ----
+INVERSION_N_STEPS=10
+INVERSION_GUIDANCE_SCALE=-7.5
+INVERSION_ETA=0.3
+SDI_UPDATE_INTERVAL=25
+
 usage() {
-  echo "Usage: ./eval.sh (--sds | --sdi | --vsd) [--guidance <num>] [--steps <int>] [--device <int>] [--prompts-file <path>]"
-  echo "Examples:"
-  echo "  ./eval.sh --sds"
-  echo "  ./eval.sh --sdi --guidance 15"
-  echo "  ./eval.sh --vsd --guidance 7.5"
+  cat <<EOF
+Usage:
+  ./eval.sh (--sds | --vsd | --sdi)
+            [--guidance <num>] [--steps <int>] [--device <int>] [--prompts-file <path>]
+            [--lora-lr <num>] [--lora-loss-weight <num>] [--lora-rank <int>]
+            [--inversion-n-steps <int>] [--inversion-guidance-scale <num>]
+            [--inversion-eta <num>] [--sdi-update-interval <int>]
+
+Examples:
+  ./eval.sh --sds
+  ./eval.sh --vsd --guidance 7.5 --lora-lr 1e-4 --lora-loss-weight 1.0
+  ./eval.sh --sdi --guidance 25 --inversion-n-steps 10 --inversion-guidance-scale -7.5 --inversion-eta 0.3 --sdi-update-interval 25
+EOF
 }
 
 # ---------------------------
@@ -33,19 +48,28 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --sds) LOSS="sds"; shift ;;
-    --sdi) LOSS="sdi"; shift ;;
     --vsd) LOSS="vsd"; shift ;;
+    --sdi) LOSS="sdi"; shift ;;
     --guidance) GUIDANCE="$2"; shift 2 ;;
     --steps) STEPS="$2"; shift 2 ;;
     --device) DEVICE="$2"; shift 2 ;;
     --prompts-file) PROMPTS_FILE="$2"; shift 2 ;;
+    # VSD
+    --lora-lr) LORA_LR="$2"; shift 2 ;;
+    --lora-loss-weight) LORA_LOSS_WEIGHT="$2"; shift 2 ;;
+    --lora-rank) LORA_RANK="$2"; shift 2 ;;
+    # SDI
+    --inversion-n-steps) INVERSION_N_STEPS="$2"; shift 2 ;;
+    --inversion-guidance-scale) INVERSION_GUIDANCE_SCALE="$2"; shift 2 ;;
+    --inversion-eta) INVERSION_ETA="$2"; shift 2 ;;
+    --sdi-update-interval) SDI_UPDATE_INTERVAL="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown arg: $1"; usage; exit 1 ;;
   esac
 done
 
 if [[ -z "$LOSS" ]]; then
-  echo "[Error] You must specify one of --sds | --sdi | --vsd"
+  echo "[Error] You must specify one of --sds | --vsd | --sdi"
   usage
   exit 1
 fi
@@ -74,9 +98,6 @@ else
   PROMPTS=("${DEFAULT_PROMPTS[@]}")
 fi
 
-# ---------------------------
-# Run generation
-# ---------------------------
 echo "[*] Running $LOSS | guidance=$GUIDANCE | steps=$STEPS | device=$DEVICE"
 for prompt in "${PROMPTS[@]}"; do
   echo "=== Generating: $prompt ==="
@@ -92,6 +113,19 @@ for prompt in "${PROMPTS[@]}"; do
       --lora_lr "$LORA_LR" \
       --lora_loss_weight "$LORA_LOSS_WEIGHT" \
       --lora_rank "$LORA_RANK"
+  elif [[ "$LOSS" == "sdi" ]]; then
+    python main.py \
+      --prompt "$prompt" \
+      --negative_prompt "$NEGATIVE_PROMPT" \
+      --loss_type "$LOSS" \
+      --guidance_scale "$GUIDANCE" \
+      --step "$STEPS" \
+      --device "$DEVICE" \
+      --save_dir "$SAVE_DIR" \
+      --inversion_n_steps "$INVERSION_N_STEPS" \
+      --inversion_guidance_scale "$INVERSION_GUIDANCE_SCALE" \
+      --inversion_eta "$INVERSION_ETA" \
+      --sdi_update_interval "$SDI_UPDATE_INTERVAL"
   else
     python main.py \
       --prompt "$prompt" \
@@ -105,15 +139,9 @@ for prompt in "${PROMPTS[@]}"; do
   echo "---"
 done
 
-# ---------------------------
-# Clean intermediate images
-# ---------------------------
 echo "[*] Cleaning intermediate step images in $SAVE_DIR"
 find "$SAVE_DIR" -maxdepth 1 -type f -name '[0-9]*.png' -delete || true
 
-# ---------------------------
-# Evaluation
-# ---------------------------
 echo "[*] Running CLIP evaluation..."
 python eval.py --fdir1 "$SAVE_DIR"
 echo "[*] Done. Results at: $SAVE_DIR/eval.json"

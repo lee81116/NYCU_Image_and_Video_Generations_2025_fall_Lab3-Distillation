@@ -130,19 +130,9 @@ python main.py --prompt "${PROMPT}" --loss_type vsd --guidance_scale 7.5 \
 
 SDI improves SDS stability by performing **DDIM inversion** before computing score differences.
 
-$$
-\begin{aligned}
-&\textbf{for each } t = T,\dots,1:\\
-\text{(1)}\;& c \sim \mathcal{U}(\mathcal{C})\\
-\text{(2)}\;& x_{0\mid t} = g(\theta;\,c)\\
-\text{(3)}\;& x_t = \mathrm{DDIM\_Inversion}\!\left(x_{0\mid t},\, t\right)\\
-\text{(4)}\;& x_{t-1} = \sqrt{\bar\alpha_{t-1}}\,x_{0\mid t}
-      + \sqrt{1-\bar\alpha_{t-1}}\,\hat\epsilon_\theta(x_t,\,c,\,t)\\
-\text{(5)}\;& x_{0\mid t-1} = \frac{1}{\sqrt{\bar\alpha_{t-1}}}
-      \Big(x_{t-1}-\sqrt{1-\bar\alpha_{t-1}}\,\hat\epsilon_\theta(x_{t-1},\,c,\,t)\Big)\\
-\text{(6)}\;& \theta \leftarrow \theta - \eta\,\nabla_\theta\,\big\|\,x_{0\mid t-1}-g(\theta;\,c)\big\|^2
-\end{aligned}
-$$
+<p align="center">
+  <img width="256" alt="sdi_formula" src="./asset/sdi_formula.png">
+</p>
 
 
 

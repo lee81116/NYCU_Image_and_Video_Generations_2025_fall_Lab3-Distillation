@@ -138,7 +138,12 @@ class StableDiffusion(nn.Module):
         Returns:
             Inverted noisy latents x_t
         """
-        # TODO: Implement DDIM inversion
+        # TODO: (Implement DDIM inversion by yourself — do NOT call built-in inversion helpers):
+        # --------------------------------------------------------------------
+        # Write your own DDIM inversion loop that maps x0 -> x_t at `target_t`.
+        # You may *read* external implementations for reference, but you must
+        # NOT call any "invert"/"ddim_invert"/"invert_step" utilities
+        # from diffusers or other libraries.
         raise NotImplementedError("TODO: Implement DDIM inversion")
     
     def get_sdi_loss(
@@ -182,8 +187,8 @@ class StableDiffusion(nn.Module):
         """
         B = latents.shape[0]
         
-        # TODO: Timestep annealing - linearly decrease from max_step to min_step
-        t = # TODO: Create current timestep tensor based on training progress
+        # TODO: Create current timestep tensor based on training progress
+        # t = ...
         
         # Check if we need to update target
         should_update = (current_iter % update_interval == 0) or not hasattr(self, 'sdi_target')
@@ -192,23 +197,23 @@ class StableDiffusion(nn.Module):
             with torch.no_grad():
                 # Perform DDIM inversion: x0 -> x_t
                 latents_noisy = self.invert_noise(
-                    latents, t[0].item(), text_embeddings,
+                    latents, t, text_embeddings,
                     guidance_scale=inversion_guidance_scale,
                     n_steps=inversion_n_steps,
                     eta=inversion_eta
                 )
                 
-                # TODO: Predict noise from inverted noisy latents using CFG
-                noise_pred = # TODO: Predict noise using CFG
+                # TODO: Predict noise from inverted noisy latents
+                # noise_pred = ...
                 
                 # TODO: Denoise to get target x0 using predicted noise
-                target = # TODO: Get x0 from noisy latents using predicted noise
+                # target = ...
                 
                 # Cache the target
                 self.sdi_target = target.detach()
         
         # TODO: Compute MSE loss between current latents and cached target
-        loss = # TODO: Compute MSE loss between latents and self.sdi_target
+        # loss = ...
         
         return loss
         

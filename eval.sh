@@ -11,7 +11,7 @@ LOSS=""
 GUIDANCE=25
 STEPS=500
 DEVICE=0
-LR=1e-2                      
+LR=1e-2
 NEGATIVE_PROMPT="low quality"
 PROMPTS_FILE=""
 SAVE_ROOT="./outputs"
@@ -56,7 +56,7 @@ while [[ $# -gt 0 ]]; do
     --guidance) GUIDANCE="$2"; shift 2 ;;
     --steps) STEPS="$2"; shift 2 ;;
     --device) DEVICE="$2"; shift 2 ;;
-    --lr) LR="$2"; shift 2 ;;                       
+    --lr) LR="$2"; shift 2 ;;
     --prompts-file) PROMPTS_FILE="$2"; shift 2 ;;
     # VSD
     --lora-lr) LORA_LR="$2"; shift 2 ;;
@@ -112,7 +112,7 @@ for prompt in "${PROMPTS[@]}"; do
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
       --step "$STEPS" \
-      --lr "$LR" \                              
+      --lr "$LR" \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR" \
       --lora_lr "$LORA_LR" \
@@ -125,7 +125,7 @@ for prompt in "${PROMPTS[@]}"; do
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
       --step "$STEPS" \
-      --lr "$LR" \                              
+      --lr "$LR" \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR" \
       --inversion_n_steps "$INVERSION_N_STEPS" \
@@ -139,7 +139,7 @@ for prompt in "${PROMPTS[@]}"; do
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
       --step "$STEPS" \
-      --lr "$LR" \                             
+      --lr "$LR" \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR"
   fi

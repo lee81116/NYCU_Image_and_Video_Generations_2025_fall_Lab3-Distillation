@@ -205,10 +205,12 @@ Submit `{STUDENT_ID}_lab3.zip` containing:
 
 ### Report (20 pts)
 
+0. **Specify** all hyperparameters you used (per task).  
 1. **Explain** SDS, VSD, and SDI — both the *concept* and your *implementation (code)*.  
 2. **Compare** visual and CLIP results.  
 3. **Intuitively analyze** why SDI and VSD perform better than SDS (**without heavy math**).  
-4. **Discuss (SDI)** the influence of **inversion steps** and **update interval** (run ablations, and justify your findings).
+4. **Discuss (SDI)** the influence of **inversion steps** and **update interval** (pick settings, run ablations, and justify your findings).
+
 
 
 

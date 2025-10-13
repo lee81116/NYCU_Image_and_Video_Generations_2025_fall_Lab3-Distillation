@@ -131,7 +131,7 @@ python main.py --prompt "${PROMPT}" --loss_type vsd --guidance_scale 7.5 \
 SDI improves SDS stability by performing **DDIM inversion** before computing score differences.
 
 <p align="center">
-  <img width="256" alt="sdi_formula" src="./asset/sdi_formula.png">
+  <img width="512" alt="sdi_formula" src="./asset/sdi_formula.png">
 </p>
 
 

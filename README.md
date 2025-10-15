@@ -41,6 +41,16 @@ conda activate lab3
 pip install -r requirements.txt
 ```
 
+### Hugging Face Access
+
+1. Sign in to **Hugging Face**.
+2. Create / copy your access token at **https://huggingface.co/settings/tokens**.
+3. From your terminal, log in:
+
+   ```bash
+   huggingface-cli login
+   
+4. enter your token.
 ---
 
 ## Code Structure
@@ -199,7 +209,10 @@ Submit `{STUDENT_ID}_lab3.zip` containing:
 1. **Explain** SDS, VSD, and SDI — both the *concept* and your *implementation (code)*.  
 2. **Compare** visual and CLIP results.  
 3. **Intuitively analyze** why SDI and VSD perform better than SDS (**without heavy math**).  
-4. **Discuss (SDI)** the influence of **inversion steps** and **update interval** (pick settings, run ablations, and justify your findings).
+4. **Discuss the influence of hyperparameters** — run ablations and justify your findings:
+   - **SDS:** `guidance_scale`
+   - **SDI:** `inversion_n_steps` (inversion steps), `sdi_update_interval` (update interval)
+
 
 
 

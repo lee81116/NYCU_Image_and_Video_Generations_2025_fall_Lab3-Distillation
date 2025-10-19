@@ -47,8 +47,8 @@ def run(args):
     model = init_model(args)
     device = model.device
     guidance_scale = args.guidance_scale
-    steps = args.step
-    
+    steps = args.steps
+
     # Get text embeddings
     cond_embeddings = model.get_text_embeds(args.prompt)
     uncond_embeddings = model.get_text_embeds(args.negative_prompt)
@@ -142,8 +142,8 @@ def parse_args():
     
     parser.add_argument("--loss_type", type=str, default="sds", choices=["sds", "sdi", "vsd"])
     parser.add_argument("--guidance_scale", type=float, default=7.5)
-    parser.add_argument("--step", type=int, default=500)
-    
+    parser.add_argument("--steps", type=int, default=500)
+
     parser.add_argument("--device", type=int, default=0)
     parser.add_argument("--lr", type=float, default=0.01, help="Learning rate for latents (default: 0.01)")
     
@@ -190,8 +190,8 @@ def main():
     print(f"[*] Prompt: {args.prompt}")
     print(f"[*] Guidance scale: {args.guidance_scale}")
     print(f"[*] Learning rate: {args.lr}")
-    print(f"[*] Steps: {args.step}")
-    
+    print(f"[*] Steps: {args.steps}")
+
     if args.loss_type == "sdi":
         print(f"[*] SDI Parameters:")
         print(f"    - Update interval: every {args.sdi_update_interval} steps")

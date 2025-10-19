@@ -111,7 +111,7 @@ for prompt in "${PROMPTS[@]}"; do
       --negative_prompt "$NEGATIVE_PROMPT" \
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
-      --step "$STEPS" \
+      --steps "$STEPS" \
       --lr "$LR" \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR" \
@@ -124,7 +124,7 @@ for prompt in "${PROMPTS[@]}"; do
       --negative_prompt "$NEGATIVE_PROMPT" \
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
-      --step "$STEPS" \
+      --steps "$STEPS" \
       --lr "$LR" \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR" \
@@ -138,7 +138,7 @@ for prompt in "${PROMPTS[@]}"; do
       --negative_prompt "$NEGATIVE_PROMPT" \
       --loss_type "$LOSS" \
       --guidance_scale "$GUIDANCE" \
-      --step "$STEPS" \
+      --steps "$STEPS" \
       --lr "$LR" \
       --device "$DEVICE" \
       --save_dir "$SAVE_DIR"

@@ -118,8 +118,7 @@ class StableDiffusion(nn.Module):
         noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
         noise_residual = noise_pred - eps
 
-        grad = 2 * noise_residual
-        target = (latents - grad).detach()
+        target = (latents - noise_residual).detach()
 
         return nn.functional.mse_loss(latents, target)
     

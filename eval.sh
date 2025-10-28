@@ -14,7 +14,7 @@ DEVICE=0
 LR=1e-2
 NEGATIVE_PROMPT="low quality"
 PROMPTS_FILE=""
-SAVE_ROOT="./outputs"
+SAVE_ROOT="/content/drive/MyDrive/IV_Lab3"
 
 # ---- VSD: LoRA hyperparams ----
 LORA_LR=1e-4

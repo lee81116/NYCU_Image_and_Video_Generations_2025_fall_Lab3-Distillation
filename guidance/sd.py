@@ -112,13 +112,16 @@ class StableDiffusion(nn.Module):
         # Get random timestep
         t = torch.randint(1, self.num_train_timesteps + 1, (1,), device=self.device)
         eps = torch.randn_like(latents).to(self.device)
-        alpha_bar_t = self.alphas[t]
+        alpha_bar_t = self.alphas[t-1]
         xt = torch.sqrt(alpha_bar_t) * latents + torch.sqrt(1.0 - alpha_bar_t) * eps
         # Get Noise Residual
         noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
         noise_residual = noise_pred - eps
-        loss = (noise_residual**2).mean()
-        return loss
+
+        grad = 2 * noise_residual
+        target = (latents - grad).detach()
+
+        return nn.functional.mse_loss(latents, target)
     
     def get_vsd_loss(self, latents, text_embeddings, guidance_scale=7.5, lora_loss_weight=1.0):
         """

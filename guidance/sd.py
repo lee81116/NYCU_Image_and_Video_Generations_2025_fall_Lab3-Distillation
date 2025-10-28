@@ -112,7 +112,7 @@ class StableDiffusion(nn.Module):
         # Get random timestep
         t = torch.randint(1, self.num_train_timesteps + 1, (1,), device=self.device)
         eps = torch.randn_like(latents).to(self.device)
-        alpha_bar_t = self.scheduler.alphas_cumprod[t].view(1, 1, 1, 1) 
+        alpha_bar_t = self.alphas[t]
         xt = torch.sqrt(alpha_bar_t) * latents + torch.sqrt(1.0 - alpha_bar_t) * eps
         # Get Noise Residual
         noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)

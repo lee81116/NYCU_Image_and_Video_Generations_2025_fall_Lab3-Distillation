@@ -141,27 +141,36 @@ class StableDiffusion(nn.Module):
         B = latents.shape[0]
         t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
         eps = torch.randn_like(latents).to(self.device)
-        xt = self.scheduler.add_noise(
-            original_samples=latents,   # x0 in latent space
-            noise=eps,
-            timesteps=t
-        )
+        xt = self.scheduler.add_noise(original_samples=latents, noise=eps, timesteps=t)
 
-        self.unet.disable_adapters()
         with torch.no_grad():
+            self.unet.disable_adapters()
             noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
-        self.unet.enable_adapters()
-        self.unet.train()
-        noise_pred_lora = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
-        
-        w = (1.0 - self.alphas[t])
-        g = w*(noise_pred - eps)
-        g = torch.nan_to_num(g)
-        target = (latents - g).detach()
-        sds_latent = 0.5 * nn.functional.mse_loss(latents, target)
+            self.unet.enable_adapters()
+            noise_pred_lora = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
         noise_residual = noise_pred - noise_pred_lora
-        vsd_lora = (w * (noise_residual)).pow(2).mean()
-        loss = lora_loss_weight * vsd_lora + sds_latent
+
+        w = ((1.0 - self.alphas[t])**0.5).view(-1, 1, 1, 1)
+        g = torch.nan_to_num(w**2 * noise_residual)
+        target = (latents - g).detach()
+        vsd_loss = 0.5 * nn.functional.mse_loss(latents, target, reduction="mean")
+
+        # lora loss
+        B = latents.shape[0]
+        t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
+        eps = torch.randn_like(latents).to(self.device)
+        xt = self.scheduler.add_noise(original_samples=latents.detach(), noise=eps, timesteps=t)
+
+        latent_model_input = torch.cat([xt] * 2)
+        tt = torch.cat([t] * 2)
+        lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
+
+        alpha_t = (self.alphas[t]**0.5).view(-1, 1, 1, 1)
+        lora_pred = alpha_t*lora_pred
+        target = alpha_t * eps
+        lora_loss = 0.5 * nn.functional.mse_loss(latents, target, reduction="mean")
+
+        loss = lora_loss_weight * lora_loss + vsd_loss
         return loss
         residual_lora = (noise_pred_lora - eps)
         target_lora = (latents - w * residual_lora).detach()

@@ -150,7 +150,14 @@ class StableDiffusion(nn.Module):
             self.unet.disable_adapters()
             noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
             self.unet.enable_adapters()
-        xtxt = torch.cat([xt] * 2)
+        
+        lora_eps = torch.randn_like(self.lora_layers).to(self.device)
+        lora_xt = xt = self.scheduler.add_noise(
+            original_samples=self.lora_layers,   # x0 in latent space
+            noise=eps,
+            timesteps=t
+        )
+        xtxt = torch.cat([lora_xt] * 2)
         tt = torch.cat([t] * 2)
         noise_pred_lora = self.unet(xtxt, tt, text_embeddings).sample
         noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)

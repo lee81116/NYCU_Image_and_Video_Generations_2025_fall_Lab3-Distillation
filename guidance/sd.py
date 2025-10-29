@@ -145,19 +145,24 @@ class StableDiffusion(nn.Module):
             noise=eps,
             timesteps=t
         )
-        self.unet.disable_adapters()
-        
-        noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
-        self.unet.set_adapter("default")
+        with torch.no_grad():
+            self.unet.disable_adapters()
+            noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+            self.unet.enable_adapters()
         xtxt = torch.cat([xt] * 2)
         tt = torch.cat([t] * 2)
         noise_pred_lora = self.unet(xtxt, tt, text_embeddings).sample
         noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
-
+        
+        noise_residual = noise_pred - noise_pred_lora
         w = 1.0
-        loss_lora = (w * (noise_pred_lora - noise_pred.detach())**2).mean()
-        g = w * (noise_pred_lora - noise_pred.detach()).detach()
-        target = (latents - g).detach()
+        #loss_lora = (w * (noise_pred_lora - noise_pred.detach())**2).mean()
+        #g = w * (noise_pred_lora - noise_pred.detach()).detach()
+        residual_lora = (noise_pred_lora - eps)
+        target_lora = (latents - residual_lora).detach()
+        loss_lora = 0.5 * nn.functional.mse_loss(latents, target_lora)
+        
+        target = (latents - noise_residual).detach()
         loss = 0.5 * nn.functional.mse_loss(latents, target)
         loss = loss + lora_loss_weight*loss_lora
         return loss

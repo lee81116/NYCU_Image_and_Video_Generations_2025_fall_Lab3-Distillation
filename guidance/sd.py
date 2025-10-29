@@ -164,11 +164,13 @@ class StableDiffusion(nn.Module):
         latent_model_input = torch.cat([xt] * 2)
         tt = torch.cat([t] * 2)
         lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
-
+        dump, lora_pred = lora_pred.chunk(2)
+        
         alpha_t = (self.alphas[t]**0.5).view(-1, 1, 1, 1)
         lora_pred = alpha_t*lora_pred
         target = alpha_t * eps
         lora_loss = 0.5 * nn.functional.mse_loss(latents, target, reduction="mean")
+        
 
         loss = lora_loss_weight * lora_loss + vsd_loss
         return loss

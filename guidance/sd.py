@@ -156,10 +156,10 @@ class StableDiffusion(nn.Module):
         vsd_loss = 0.5 * nn.functional.mse_loss(latents, target, reduction="mean")
 
         # lora loss
-        """B = latents.shape[0]
+        B = latents.shape[0]
         t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
         eps = torch.randn_like(latents).to(self.device)
-        xt = self.scheduler.add_noise(original_samples=latents.detach(), noise=eps, timesteps=t)"""
+        xt = self.scheduler.add_noise(original_samples=latents.detach(), noise=eps, timesteps=t)
 
         latent_model_input = torch.cat([xt] * 2)
         tt = torch.cat([t] * 2)
@@ -171,8 +171,7 @@ class StableDiffusion(nn.Module):
         target = alpha_t * eps
         lora_loss = 0.5 * nn.functional.mse_loss(lora_pred, target, reduction="mean")
         
-
-        loss = lora_loss_weight * lora_loss + vsd_loss
+        loss = vsd_loss + lora_loss_weight * lora_loss
         return loss
     
     @torch.no_grad()

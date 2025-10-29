@@ -138,40 +138,21 @@ class StableDiffusion(nn.Module):
         Reference: ProlificDreamer (https://arxiv.org/abs/2305.16213)
         """
         # TODO: Implement VSD loss
-        B = latents.shape[0]
-        t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
-        eps = torch.randn_like(latents).to(self.device)
-        xt = self.scheduler.add_noise(
-            original_samples=latents,   # x0 in latent space
-            noise=eps,
-            timesteps=t
-        )
-        with torch.no_grad():
-            self.unet.disable_adapters()
-            noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
-            self.unet.enable_adapters()
-
-        flat_lora = torch.cat([p.detach().flatten() for p in self.lora_layers])
-        lora_eps = torch.randn_like(flat_lora).to(self.device)
-        lora_xt = self.scheduler.add_noise(
-            original_samples=flat_lora,   # x0 in latent space
-            noise=lora_eps,
-            timesteps=t
-        )
-        xtxt = torch.cat([lora_xt] * 2)
-        tt = torch.cat([t] * 2)
-        noise_pred_lora = self.unet(lora_xt, t, text_embeddings).sample
-        #noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
+        sds_loss = self.get_sds_loss(latents, text_embeddings, guidance_scale=guidance_scale)
         
-        w = 1.0
-        residual_lora = (noise_pred_lora - eps)
-        target_lora = (latents - w * residual_lora).detach()
-        loss_lora = 0.5 * nn.functional.mse_loss(latents, target_lora)
+        # LoRA regularization (if LoRA adapters exist and have trainable params)
+        lora_reg = torch.tensor(0.0, device=latents.device, dtype=latents.dtype)
+        if hasattr(self, 'lora_layers') and len(self.lora_layers) > 0:
+            # lora_layers is a list of trainable params
+            for p in self.lora_layers:
+                if p.requires_grad:
+                    lora_reg = lora_reg + (p.pow(2).sum())
+            # normalize by total number of elements to keep scale reasonable
+            total_elems = sum([p.numel() for p in self.lora_layers if p.requires_grad])
+            if total_elems > 0:
+                lora_reg = lora_reg / total_elems
 
-        noise_residual = noise_pred - noise_pred_lora
-        target = (latents - w * noise_residual).detach()
-        loss = 0.5 * nn.functional.mse_loss(latents, target)
-        loss = loss + lora_loss_weight*loss_lora
+        loss = sds_loss + lora_loss_weight * lora_reg
         return loss
     
     @torch.no_grad()

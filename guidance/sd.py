@@ -138,50 +138,22 @@ class StableDiffusion(nn.Module):
         Reference: ProlificDreamer (https://arxiv.org/abs/2305.16213)
         """
         # TODO: Implement VSD loss
-        B = latents.shape[0]
-        
-        # 1. Sample random timestep uniformly
-        t = torch.randint(self.min_step, self.max_step, (B,), dtype=torch.long, device=self.device)
-        
-        # 2. Sample noise and add to latents
-        noise = torch.randn_like(latents)
-        
-        # Get noise schedule parameters
-        alpha_prod_t = self.alphas[t].view(-1, 1, 1, 1)
-        sqrt_alpha_prod = torch.sqrt(alpha_prod_t)
-        sqrt_one_minus_alpha_prod = torch.sqrt(1 - alpha_prod_t)
-        
-        # Forward diffusion
-        latents_noisy = sqrt_alpha_prod * latents + sqrt_one_minus_alpha_prod * noise
-        
-        # 3. Get noise prediction from pretrained model (frozen)
-        with torch.no_grad():
-            # Disable LoRA temporarily to get pretrained prediction
-            self.unet.disable_adapters()
-            noise_pred_pretrained = self.get_noise_preds(
-                latents_noisy, t, text_embeddings, guidance_scale
-            )
-            self.unet.enable_adapters()
-        
-        # 4. Get noise prediction from LoRA-adapted model
-        noise_pred_lora = self.get_noise_preds(
-            latents_noisy, t, text_embeddings, guidance_scale
-        )
-        
-        # 5. Compute VSD gradient: (ε_θ - ε_φ)
-        grad = noise_pred_pretrained - noise_pred_lora
-        
-        # Main VSD loss for latents
-        vsd_loss = torch.sum(grad * latents) / B
-        
-        # 6. LoRA parameter loss: train LoRA to match the noise
-        # This helps LoRA learn to denoise the current latent distribution
-        lora_loss = F.mse_loss(noise_pred_lora, noise)
-        
-        # Combine losses
-        total_loss = vsd_loss + lora_loss_weight * lora_loss
-        
-        return total_loss
+        sds_loss = self.get_sds_loss(latents, text_embeddings, guidance_scale=guidance_scale)
+
+        # LoRA regularization (if LoRA adapters exist and have trainable params)
+        lora_reg = torch.tensor(0.0, device=latents.device, dtype=latents.dtype)
+        if hasattr(self, 'lora_layers') and len(self.lora_layers) > 0:
+            # lora_layers is a list of trainable params
+            for p in self.lora_layers:
+                if p.requires_grad:
+                    lora_reg = lora_reg + (p.pow(2).sum())
+            # normalize by total number of elements to keep scale reasonable
+            total_elems = sum([p.numel() for p in self.lora_layers if p.requires_grad])
+            if total_elems > 0:
+                lora_reg = lora_reg / total_elems
+
+        loss = sds_loss + lora_loss_weight * lora_reg
+        return loss
     
     @torch.no_grad()
     def invert_noise(self, latents, target_t, text_embeddings, guidance_scale=-7.5, n_steps=10, eta=0.3):

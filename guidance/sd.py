@@ -138,21 +138,31 @@ class StableDiffusion(nn.Module):
         Reference: ProlificDreamer (https://arxiv.org/abs/2305.16213)
         """
         # TODO: Implement VSD loss
-        sds_loss = self.get_sds_loss(latents, text_embeddings, guidance_scale=guidance_scale)
+        B = latents.shape[0]
+        t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
+        eps = torch.randn_like(latents).to(self.device)
+        xt = self.scheduler.add_noise(
+            original_samples=latents,   # x0 in latent space
+            noise=eps,
+            timesteps=t
+        )
         
-        # LoRA regularization (if LoRA adapters exist and have trainable params)
-        lora_reg = torch.tensor(0.0, device=latents.device, dtype=latents.dtype)
-        if hasattr(self, 'lora_layers') and len(self.lora_layers) > 0:
-            # lora_layers is a list of trainable params
-            for p in self.lora_layers:
-                if p.requires_grad:
-                    lora_reg = lora_reg + (p.pow(2).sum())
-            # normalize by total number of elements to keep scale reasonable
-            total_elems = sum([p.numel() for p in self.lora_layers if p.requires_grad])
-            if total_elems > 0:
-                lora_reg = lora_reg / total_elems
+        self.unet.disable_adapters()
+        with torch.no_grad():
+            noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+        self.unet.enable_adapters()
+        with torch.no_grad():
+            noise_pred_lora = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+        
+        w = (1.0 - self.alphas[t])
+        residual_lora = (noise_pred_lora - eps)
+        target_lora = (latents - w * residual_lora).detach()
+        loss_lora = 0.5 * nn.functional.mse_loss(latents, target_lora)
 
-        loss = sds_loss + lora_loss_weight * lora_reg
+        noise_residual = noise_pred - noise_pred_lora
+        target = (latents - w * noise_residual).detach()
+        loss = 0.5 * nn.functional.mse_loss(latents, target)
+        loss = loss + lora_loss_weight*loss_lora
         return loss
     
     @torch.no_grad()

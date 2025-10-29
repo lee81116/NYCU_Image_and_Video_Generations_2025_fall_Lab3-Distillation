@@ -155,7 +155,7 @@ class StableDiffusion(nn.Module):
         noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
 
         w = (1.0 - self.alphas[t])
-        loss_lora = w * (noise_pred_lora - noise_pred.detach()**2).mean()
+        loss_lora = (w * (noise_pred_lora - noise_pred.detach())**2).mean()
         g = w * (noise_pred_lora - noise_pred.detach()).detach()
         target = (latents - g).detach()
         loss = 0.5 * nn.functional.mse_loss(latents, target)

@@ -160,15 +160,15 @@ class StableDiffusion(nn.Module):
         )
         xtxt = torch.cat([lora_xt] * 2)
         tt = torch.cat([t] * 2)
-        noise_pred_lora = self.unet(xtxt, tt, text_embeddings).sample
-        noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
+        noise_pred_lora = self.unet(lora_xt, t, text_embeddings).sample
+        #noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
         
-        noise_residual = noise_pred - noise_pred_lora
         w = 1.0
         residual_lora = (noise_pred_lora - eps)
         target_lora = (latents - w * residual_lora).detach()
         loss_lora = 0.5 * nn.functional.mse_loss(latents, target_lora)
-        
+
+        noise_residual = noise_pred - noise_pred_lora
         target = (latents - w * noise_residual).detach()
         loss = 0.5 * nn.functional.mse_loss(latents, target)
         loss = loss + lora_loss_weight*loss_lora

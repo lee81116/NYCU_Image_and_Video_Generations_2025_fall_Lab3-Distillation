@@ -110,7 +110,7 @@ class StableDiffusion(nn.Module):
         """
         # TODO: Implement SDS loss
         # Get random timestep
-        t = torch.randint(1, self.num_train_timesteps + 1, (1,), device=self.device)
+        t = torch.randint(1, self.num_train_timesteps, (1,), device=self.device)
         eps = torch.randn_like(latents).to(self.device)
         alpha_bar_t = self.alphas[t-1]
         xt = self.scheduler.add_noise(
@@ -122,6 +122,7 @@ class StableDiffusion(nn.Module):
         noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
         noise_residual = noise_pred - eps
 
+        # w(t)
         bar_alpha_t = self.scheduler.alphas_cumprod[t].view(1, 1, 1, 1)
         w = (1.0 - bar_alpha_t)
 

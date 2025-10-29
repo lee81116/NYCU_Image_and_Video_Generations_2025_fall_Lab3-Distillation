@@ -140,34 +140,30 @@ class StableDiffusion(nn.Module):
         # TODO: Implement VSD loss
         B = latents.shape[0]
         t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
-        noise = torch.randn_like(latents)
-        latents_noisy = self.scheduler.add_noise(latents, noise, t)
+        eps = torch.randn_like(latents).to(self.device)
+        xt = self.scheduler.add_noise(
+            original_samples=latents,   # x0 in latent space
+            noise=eps,
+            timesteps=t
+        )
+        with torch.no_grad():
+            self.unet.disable_adapters()
+            noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+            self.unet.enable_adapters()
+        xtxt = torch.cat([xt] * 2)
+        tt = torch.cat([t] * 2)
+        noise_pred_lora = self.unet(xtxt, tt, text_embeddings).sample
+        noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
         
-        # Get LoRA model prediction (with grad for LoRA parameters)
+        noise_residual = noise_pred - noise_pred_lora
+        w = (1.0 - self.alphas[t])
+        residual_lora = (noise_pred_lora - eps)
+        target_lora = (latents - w * residual_lora).detach()
+        loss_lora = 0.5 * nn.functional.mse_loss(latents, target_lora)
         
-        # Get pretrained model prediction (without LoRA, stop gradient)
-        self.unet.disable_adapters()
-        noise_pred_pretrained = self.get_noise_preds(latents_noisy, t, text_embeddings, guidance_scale)
-        self.unet.enable_adapters()
-        noise_pred_lora = self.get_noise_preds(latents_noisy, t, text_embeddings, guidance_scale)
-        
-        
-        
-        # LoRA loss: trains the LoRA parameters to match pretrained model
-        # This encourages ε_φ to approximate ε_θ, preventing mode collapse
-        lora_loss = F.mse_loss(noise_pred_lora, noise, reduction='mean')
-        # Compute VSD gradient: (ε_θ - ε_φ)
-        grad = noise_pred_pretrained - noise_pred_lora
-        
-        # Convert gradient to loss using the same trick as SDS
-        # We want ∂L/∂x_0 = grad
-        target = (latents - grad).detach()
-        
-        # Particle loss: guides the latent towards better samples
-        particle_loss = 0.5 * F.mse_loss(latents, target, reduction='mean')
-        # Combined loss
-        loss = particle_loss + lora_loss_weight * lora_loss
-        
+        target = (latents - w * noise_residual).detach()
+        loss = 0.5 * nn.functional.mse_loss(latents, target)
+        loss = loss + lora_loss_weight*loss_lora
         return loss
     
     @torch.no_grad()

@@ -145,10 +145,10 @@ class StableDiffusion(nn.Module):
             noise=eps,
             timesteps=t
         )
-        self.unet.set_adapters(["default"], adapter_weights=[0.0])
+        self.unet.disable_adapters()
         with torch.no_grad():
             noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
-        self.unet.set_adapters(["default"], adapter_weights=[1.0])
+        self.unet.set_adapter("default")
         noise_pred_lora = self.unet(xt, t, text_embeddings).sample
 
         w = (1.0 - self.alphas[t])

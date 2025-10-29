@@ -169,12 +169,11 @@ class StableDiffusion(nn.Module):
         eps = torch.randn_like(latents).to(self.device)
         xt = self.scheduler.add_noise(original_samples=latents.detach(), noise=eps, timesteps=t)"""
 
-        """latent_model_input = torch.cat([xt] * 2)
+        latent_model_input = torch.cat([xt] * 2)
         tt = torch.cat([t] * 2)
         lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
         lora_pred = latent_model_input * torch.cat([w] * 2, dim=0).view(-1, 1, 1, 1) + noise_pred * torch.cat([alpha_t] * 2, dim=0).view(-1, 1, 1, 1)
-        dump, lora_pred = lora_pred.chunk(2)"""
-        lora_pred = lora_pred_pos
+        dump, lora_pred = lora_pred.chunk
 
         lora_pred = alpha_t * lora_pred
         target = alpha_t * eps

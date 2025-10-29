@@ -112,7 +112,8 @@ class StableDiffusion(nn.Module):
         # Get random timestep
         t = torch.randint(1, self.num_train_timesteps, (1,), device=self.device)
         eps = torch.randn_like(latents).to(self.device)
-        alpha_bar_t = self.alphas[t-1]
+        alpha_bar_t = self.alphas[t]
+        # xt = sqrt(alpha_bar_t) * x_0 + sqrt(1 - alpha_bar_t) * eps
         xt = self.scheduler.add_noise(
             original_samples=latents,   # x0 in latent space
             noise=eps,
@@ -123,8 +124,7 @@ class StableDiffusion(nn.Module):
         noise_residual = noise_pred - eps
 
         # w(t)
-        bar_alpha_t = self.scheduler.alphas_cumprod[t].view(1, 1, 1, 1)
-        w = (1.0 - bar_alpha_t)
+        w = (1.0 - alpha_bar_t)
 
         g = w * noise_residual  
         g = torch.nan_to_num(g)
@@ -139,6 +139,25 @@ class StableDiffusion(nn.Module):
         """
         # TODO: Implement VSD loss
         t = torch.randint(1, self.num_train_timesteps + 1, (1,), device=self.device)
+        eps = torch.randn_like(latents).to(self.device)
+        xt = self.scheduler.add_noise(
+            original_samples=latents,   # x0 in latent space
+            noise=eps,
+            timesteps=t
+        )
+        self.unet.set_adapters(["default"], adapter_weights=[0.0])
+        with torch.no_grad():
+            noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+        self.unet.set_adapters(["default"], adapter_weights=[1.0])
+        noise_pred_lora = self.unet(xt, t, text_embeddings).sample
+
+        w = (1.0 - self.alphas[t])
+        loss_lora = w * (noise_pred_lora - noise_pred.detach()**2).mean()
+        g = w * (noise_pred_lora - noise_pred.detach()).detach()
+        target = (latents - g).detach()
+        loss = 0.5 * nn.functional.mse_loss(latents, target)
+        loss = loss + lora_loss_weight*loss_lora
+        return loss
         raise NotImplementedError("TODO: Implement VSD loss")
     
     @torch.no_grad()

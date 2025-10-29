@@ -149,7 +149,10 @@ class StableDiffusion(nn.Module):
         with torch.no_grad():
             noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
         self.unet.set_adapter("default")
-        noise_pred_lora = self.unet(xt, t, text_embeddings).sample
+        xtxt = torch.cat([xt] * 2)
+        tt = torch.cat([t] * 2)
+        noise_pred_lora = self.unet(xtxt, tt, text_embeddings).sample
+        noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
 
         w = (1.0 - self.alphas[t])
         loss_lora = w * (noise_pred_lora - noise_pred.detach()**2).mean()

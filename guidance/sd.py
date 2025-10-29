@@ -138,7 +138,7 @@ class StableDiffusion(nn.Module):
         Reference: ProlificDreamer (https://arxiv.org/abs/2305.16213)
         """
         # TODO: Implement VSD loss
-        t = torch.randint(1, self.num_train_timesteps + 1, (1,), device=self.device)
+        t = torch.randint(1, self.num_train_timesteps, (1,), device=self.device)
         eps = torch.randn_like(latents).to(self.device)
         xt = self.scheduler.add_noise(
             original_samples=latents,   # x0 in latent space

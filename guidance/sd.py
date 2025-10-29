@@ -138,35 +138,50 @@ class StableDiffusion(nn.Module):
         Reference: ProlificDreamer (https://arxiv.org/abs/2305.16213)
         """
         # TODO: Implement VSD loss
-        t = torch.randint(1, self.num_train_timesteps + 1, (1,), device=self.device)
-        eps = torch.randn_like(latents).to(self.device)
-        xt = self.scheduler.add_noise(
-            original_samples=latents,   # x0 in latent space
-            noise=eps,
-            timesteps=t
-        )
+        B = latents.shape[0]
+        
+        # 1. Sample random timestep uniformly
+        t = torch.randint(self.min_step, self.max_step, (B,), dtype=torch.long, device=self.device)
+        
+        # 2. Sample noise and add to latents
+        noise = torch.randn_like(latents)
+        
+        # Get noise schedule parameters
+        alpha_prod_t = self.alphas[t].view(-1, 1, 1, 1)
+        sqrt_alpha_prod = torch.sqrt(alpha_prod_t)
+        sqrt_one_minus_alpha_prod = torch.sqrt(1 - alpha_prod_t)
+        
+        # Forward diffusion
+        latents_noisy = sqrt_alpha_prod * latents + sqrt_one_minus_alpha_prod * noise
+        
+        # 3. Get noise prediction from pretrained model (frozen)
         with torch.no_grad():
+            # Disable LoRA temporarily to get pretrained prediction
             self.unet.disable_adapters()
-            noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+            noise_pred_pretrained = self.get_noise_preds(
+                latents_noisy, t, text_embeddings, guidance_scale
+            )
             self.unet.enable_adapters()
-        xtxt = torch.cat([xt] * 2)
-        tt = torch.cat([t] * 2)
-        noise_pred_lora = self.unet(xtxt, tt, text_embeddings).sample
-        noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
         
-        noise_residual = noise_pred - noise_pred_lora
-        w = 1.0
-        #loss_lora = (w * (noise_pred_lora - noise_pred.detach())**2).mean()
-        #g = w * (noise_pred_lora - noise_pred.detach()).detach()
-        residual_lora = (noise_pred_lora - eps)
-        target_lora = (latents - residual_lora).detach()
-        loss_lora = 0.5 * nn.functional.mse_loss(latents, target_lora)
+        # 4. Get noise prediction from LoRA-adapted model
+        noise_pred_lora = self.get_noise_preds(
+            latents_noisy, t, text_embeddings, guidance_scale
+        )
         
-        target = (latents - noise_residual).detach()
-        loss = 0.5 * nn.functional.mse_loss(latents, target)
-        loss = loss + lora_loss_weight*loss_lora
-        return loss
-        raise NotImplementedError("TODO: Implement VSD loss")
+        # 5. Compute VSD gradient: (ε_θ - ε_φ)
+        grad = noise_pred_pretrained - noise_pred_lora
+        
+        # Main VSD loss for latents
+        vsd_loss = torch.sum(grad * latents) / B
+        
+        # 6. LoRA parameter loss: train LoRA to match the noise
+        # This helps LoRA learn to denoise the current latent distribution
+        lora_loss = F.mse_loss(noise_pred_lora, noise)
+        
+        # Combine losses
+        total_loss = vsd_loss + lora_loss_weight * lora_loss
+        
+        return total_loss
     
     @torch.no_grad()
     def invert_noise(self, latents, target_t, text_embeddings, guidance_scale=-7.5, n_steps=10, eta=0.3):

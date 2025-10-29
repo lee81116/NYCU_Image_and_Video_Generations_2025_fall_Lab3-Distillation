@@ -155,18 +155,15 @@ class StableDiffusion(nn.Module):
         noise_pred_lora, noise_pred_lo = noise_pred_lora.chunk(2)
         
         noise_residual = noise_pred - noise_pred_lora
-        w = 1.0
-        #loss_lora = (w * (noise_pred_lora - noise_pred.detach())**2).mean()
-        #g = w * (noise_pred_lora - noise_pred.detach()).detach()
+        w = (1.0 - self.alphas[t])
         residual_lora = (noise_pred_lora - eps)
-        target_lora = (latents - residual_lora).detach()
+        target_lora = (latents - w * residual_lora).detach()
         loss_lora = 0.5 * nn.functional.mse_loss(latents, target_lora)
         
-        target = (latents - noise_residual).detach()
+        target = (latents - w * noise_residual).detach()
         loss = 0.5 * nn.functional.mse_loss(latents, target)
         loss = loss + lora_loss_weight*loss_lora
         return loss
-        raise NotImplementedError("TODO: Implement VSD loss")
     
     @torch.no_grad()
     def invert_noise(self, latents, target_t, text_embeddings, guidance_scale=-7.5, n_steps=10, eta=0.3):

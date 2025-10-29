@@ -150,7 +150,7 @@ class StableDiffusion(nn.Module):
             noise_pred_lora = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
         noise_residual = noise_pred - noise_pred_lora
 
-        w = ((1.0 - self.alphas[t])**0.5).view(-1, 1, 1, 1)
+        w = 1.0 - self.alphas[t]
         g = torch.nan_to_num(w**2 * noise_residual)
         target = (latents - g).detach()
         vsd_loss = 0.5 * nn.functional.mse_loss(latents, target, reduction="mean")
@@ -166,7 +166,7 @@ class StableDiffusion(nn.Module):
         lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
         dump, lora_pred = lora_pred.chunk(2)
 
-        alpha_t = (self.alphas[t]**0.5).view(-1, 1, 1, 1)
+        alpha_t = self.alphas[t]
         lora_pred = alpha_t*lora_pred
         target = alpha_t * eps
         lora_loss = 0.5 * nn.functional.mse_loss(lora_pred, target, reduction="mean")

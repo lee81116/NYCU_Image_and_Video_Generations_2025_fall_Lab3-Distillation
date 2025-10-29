@@ -159,7 +159,7 @@ class StableDiffusion(nn.Module):
         g = w * (noise_pred_lora - noise_pred.detach()).detach()
         target = (latents - g).detach()
         loss = 0.5 * nn.functional.mse_loss(latents, target)
-        loss = loss + lora_loss_weight*loss_lora
+        #loss = loss + lora_loss_weight*loss_lora
         return loss
         raise NotImplementedError("TODO: Implement VSD loss")
     

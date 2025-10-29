@@ -153,7 +153,7 @@ class StableDiffusion(nn.Module):
 
         flat_lora = torch.cat([p.detach().flatten() for p in self.lora_layers])
         lora_eps = torch.randn_like(flat_lora).to(self.device)
-        lora_xt = xt = self.scheduler.add_noise(
+        lora_xt = self.scheduler.add_noise(
             original_samples=flat_lora,   # x0 in latent space
             noise=lora_eps,
             timesteps=t

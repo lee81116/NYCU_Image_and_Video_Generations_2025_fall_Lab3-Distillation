@@ -142,8 +142,8 @@ class StableDiffusion(nn.Module):
         t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
         eps = torch.randn_like(latents).to(self.device)
         xt = self.scheduler.add_noise(original_samples=latents, noise=eps, timesteps=t)
-        w = (1.0 - self.alphas[t])**0.5
-        alpha_t = self.alphas[t] **0.5
+        w = (1.0 - self.alphas[t])
+        alpha_t = self.alphas[t] 
 
         with torch.no_grad():
             self.unet.disable_adapters()
@@ -158,9 +158,8 @@ class StableDiffusion(nn.Module):
             noise_pred_lora = lora_pred_uncond + guidance_scale * (lora_pred_text - lora_pred_uncond)
 
         noise_residual = noise_pred - noise_pred_lora
-
-        
-        g = torch.nan_to_num(w**2 * noise_residual)
+    
+        g = torch.nan_to_num(w * noise_residual)
         target = (latents - g).detach()
         vsd_loss = 0.5 * nn.functional.mse_loss(latents, target, reduction="mean")
 

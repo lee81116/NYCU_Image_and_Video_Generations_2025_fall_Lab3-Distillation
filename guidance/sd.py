@@ -142,15 +142,23 @@ class StableDiffusion(nn.Module):
         t = torch.randint(self.min_step, self.max_step + 1, (B,), dtype=torch.long, device=self.device)
         eps = torch.randn_like(latents).to(self.device)
         xt = self.scheduler.add_noise(original_samples=latents, noise=eps, timesteps=t)
+        w = (1.0 - self.alphas[t])**0.5
 
         with torch.no_grad():
             self.unet.disable_adapters()
             noise_pred = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
             self.unet.enable_adapters()
-            noise_pred_lora = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+            # noise_pred_lora = self.get_noise_preds(xt, t, text_embeddings, guidance_scale=guidance_scale)
+            latent_model_input = torch.cat([xt] * 2)
+            tt = torch.cat([t] * 2)
+            lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
+            lora_pred = latent_model_input * torch.cat([w] * 2, dim=0).view(-1, 1, 1, 1) + noise_pred * torch.cat([alpha_t] * 2, dim=0).view(-1, 1, 1, 1)
+            lora_pred_uncond, lora_pred_text = noise_pred.chunk(2)
+            noise_pred_lora = lora_pred_uncond + guidance_scale * (lora_pred_text - lora_pred_uncond)
+
         noise_residual = noise_pred - noise_pred_lora
 
-        w = 1.0 - self.alphas[t]
+        
         g = torch.nan_to_num(w**2 * noise_residual)
         target = (latents - g).detach()
         vsd_loss = 0.5 * nn.functional.mse_loss(latents, target, reduction="mean")
@@ -164,9 +172,10 @@ class StableDiffusion(nn.Module):
         latent_model_input = torch.cat([xt] * 2)
         tt = torch.cat([t] * 2)
         lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
+        lora_pred = latent_model_input * torch.cat([w] * 2, dim=0).view(-1, 1, 1, 1) + noise_pred * torch.cat([alpha_t] * 2, dim=0).view(-1, 1, 1, 1)
         dump, lora_pred = lora_pred.chunk(2)
 
-        alpha_t = self.alphas[t]
+        alpha_t = self.alphas[t] **0.5
         lora_pred = alpha_t*lora_pred
         target = alpha_t * eps
         lora_loss = 0.5 * nn.functional.mse_loss(lora_pred, target, reduction="mean")

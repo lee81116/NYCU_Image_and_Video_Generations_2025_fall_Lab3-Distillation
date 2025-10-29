@@ -153,7 +153,7 @@ class StableDiffusion(nn.Module):
             latent_model_input = torch.cat([xt] * 2)
             tt = torch.cat([t] * 2)
             lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
-            lora_pred = latent_model_input * torch.cat([w**0.5] * 2, dim=0).view(-1, 1, 1, 1) + noise_pred * torch.cat([alpha_t**0.5] * 2, dim=0).view(-1, 1, 1, 1)
+            lora_pred = latent_model_input * torch.cat([w] * 2, dim=0).view(-1, 1, 1, 1) + noise_pred * torch.cat([alpha_t] * 2, dim=0).view(-1, 1, 1, 1)
             lora_pred_uncond, lora_pred_pos = lora_pred.chunk(2)
             noise_pred_lora = lora_pred_uncond + guidance_scale * (lora_pred_pos - lora_pred_uncond)
 
@@ -169,14 +169,14 @@ class StableDiffusion(nn.Module):
         eps = torch.randn_like(latents).to(self.device)
         xt = self.scheduler.add_noise(original_samples=latents.detach(), noise=eps, timesteps=t)"""
 
-        latent_model_input = torch.cat([xt] * 2)
+        """latent_model_input = torch.cat([xt] * 2)
         tt = torch.cat([t] * 2)
         lora_pred = self.unet(latent_model_input, tt, encoder_hidden_states=text_embeddings).sample
-        lora_pred = latent_model_input * torch.cat([w**0.5] * 2, dim=0).view(-1, 1, 1, 1) + noise_pred * torch.cat([alpha_t**0.5] * 2, dim=0).view(-1, 1, 1, 1)
-        dump, lora_pred = lora_pred.chunk(2)
+        lora_pred = latent_model_input * torch.cat([w] * 2, dim=0).view(-1, 1, 1, 1) + noise_pred * torch.cat([alpha_t] * 2, dim=0).view(-1, 1, 1, 1)
+        dump, lora_pred = lora_pred.chunk(2)"""
+        lora_pred = noise_pred_lora
 
-        
-        lora_pred = alpha_t*lora_pred
+        lora_pred = alpha_t * lora_pred
         target = alpha_t * eps
         lora_loss = 0.5 * nn.functional.mse_loss(lora_pred, target, reduction="mean")
         

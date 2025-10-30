@@ -297,7 +297,9 @@ class StableDiffusion(nn.Module):
                 # TODO: Denoise to get target x0 using predicted noise
                 # target = ... = (x_t - √(1-α_t) * ε_θ) / √α_t
                 alpha_bar_t = self.alphas[t]
-                target = (latents_noisy - (1 - alpha_bar_t).sqrt()*noise_pred) / alpha_bar_t.sqrt()
+                sqrt_one_minus = torch.sqrt((1.0 - alpha_bar_t).clamp(0.0)).view(B, 1, 1, 1)
+                sqrt_alpha = torch.sqrt(alpha_bar_t.clamp(1e-12, 1.0)).view(B, 1, 1, 1)
+                target = (latents_noisy - sqrt_one_minus * noise_pred) / sqrt_alpha
                 # Cache the target
                 self.sdi_target = target.detach()
         

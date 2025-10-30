@@ -216,19 +216,13 @@ class StableDiffusion(nn.Module):
             alpha_bar_t = self.alphas[timesteps[i]]
             alpha_bar_t_next = self.alphas[timesteps[i+1]]
             #x0_pred = (noisy_latents - (1 - alpha_bar_t).sqrt() * noise_pred) / alpha_bar_t.sqert()
-            print(alpha_bar_t_next)
-            print((1 - alpha_bar_t_next))
-            print(1 - alpha_bar_t)
-            print("QQ", ((1 - alpha_bar_t_next) / (1 - alpha_bar_t)).sqrt())
+
             sigma_t = eta                                                   \
-                    * ((1 - alpha_bar_t_next) / (1 - alpha_bar_t)).sqrt()   \
-                    * (1 - alpha_bar_t / alpha_bar_t_next).sqrt()
-            print("sigma_t", sigma_t)
-            dir_xt = ((1-alpha_bar_t_next) - sigma_t**2).sqrt() * noise_pred
-            print("(1-alpha_bar_t_next)", (1-alpha_bar_t_next))
-            print("dir_xt", dir_xt)
+                    * torch.sqrt((1 - alpha_bar_t_next) / (1 - alpha_bar_t))   \
+                    * torch.sqrt(1 - alpha_bar_t / alpha_bar_t_next)
+            dir_xt = torch.sqrt((1-alpha_bar_t_next) - sigma_t**2) * noise_pred
             # compute x_t without "random noise"
-            noisy_latents = alpha_bar_t_next.sqrt() * noise_pred + dir_xt
+            noisy_latents = torch.sqrt * noise_pred + dir_xt
             # Add noise to the sample
             noise = torch.randn_like(noisy_latents)
             noisy_latents += sigma_t * noise

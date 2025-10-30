@@ -210,7 +210,7 @@ class StableDiffusion(nn.Module):
         timesteps = torch.linspace(0, target_t.item(), n_steps + 1, device=self.device).long()
 
         noisy_latents = latents
-        for i in range(timesteps):
+        for i in range(len(timesteps)-1):
             t = torch.full((B,), timesteps[i], device=self.device, dtype=torch.long)
             noise_pred = self.get_noise_preds(noisy_latents, t, text_embeddings, guidance_scale)
 

@@ -206,7 +206,30 @@ class StableDiffusion(nn.Module):
         # You may *read* external implementations for reference, but you must
         # NOT call any "invert"/"ddim_invert"/"invert_step" utilities
         # from diffusers or other libraries.
-        raise NotImplementedError("TODO: Implement DDIM inversion")
+        B = latents.shape[0]
+        timesteps = torch.linspace(0, target_t.item(), n_steps + 1, device=self.device).long()
+
+        noisy_latents = latents
+        for i in range(timesteps):
+            t = torch.full((B,), timesteps[i], device=self.device, dtype=torch.long)
+            noise_pred = self.get_noise_preds(noisy_latents, t, text_embeddings, guidance_scale)
+
+            alpha_bar_t = self.inverse_scheduler.alphas_cumprod[timesteps[i]]
+            alpha_bar_t_next = self.inverse_scheduler.alphas_cumprod[timesteps[i+1]]
+            #x0_pred = (noisy_latents - (1 - alpha_bar_t).sqrt() * noise_pred) / alpha_bar_t.sqert()
+
+            sigma_t = eta                                                   \
+                    * ((1 - alpha_bar_t_next) / (1 - alpha_bar_t)).sqrt()   \
+                    * (1 - alpha_bar_t / alpha_bar_t_next).sqrt()
+            
+            dir_xt = ((1-alpha_bar_t_next) - sigma_t**2).sqrt() * noise_pred
+            # compute x_t without "random noise"
+            noisy_latents = alpha_bar_t_next.sqrt() * noise_pred + dir_xt
+            # Add noise to the sample
+            noise = torch.randn_like(noisy_latents)
+            noisy_latents += sigma_t * noise
+
+        return noisy_latents
     
     def get_sdi_loss(
         self, 
@@ -251,6 +274,11 @@ class StableDiffusion(nn.Module):
         
         # TODO: Create current timestep tensor based on training progress
         # t = ...
+        B = latents.shape[0]
+        progress = current_iter / (total_iters - 1)
+        t_value = self.max_step - progress * (self.max_step - self.min_step)
+        t = torch.full((B,), int(t_value), device=self.device, dtype=torch.long)
+        w = (1.0 - self.inverse_scheduler.alphas_cumprod[t])
         
         # Check if we need to update target
         should_update = (current_iter % update_interval == 0) or not hasattr(self, 'sdi_target')
@@ -267,16 +295,18 @@ class StableDiffusion(nn.Module):
                 
                 # TODO: Predict noise from inverted noisy latents
                 # noise_pred = ...
-                
+                noise_pred = self.get_noise_preds(latents_noisy, t, text_embeddings, guidance_scale)
+
                 # TODO: Denoise to get target x0 using predicted noise
-                # target = ...
-                
+                # target = ... = (x_t - √(1-α_t) * ε_θ) / √α_t
+                alpha_bar_t = self.inverse_scheduler.alphas_cumprod[t]
+                target = (latents_noisy - (1 - alpha_bar_t).sqrt()*noise_pred) / alpha_bar_t.sqrt()
                 # Cache the target
                 self.sdi_target = target.detach()
         
         # TODO: Compute MSE loss between current latents and cached target
         # loss = ...
-        
+        loss = 0.5 * nn.functional.mse_loss(latents, self.sdi_target, reduction="mean")
         return loss
         
     @torch.no_grad()

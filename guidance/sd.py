@@ -222,7 +222,7 @@ class StableDiffusion(nn.Module):
                     * torch.sqrt(1 - alpha_bar_t / alpha_bar_t_next)
             dir_xt = torch.sqrt((1-alpha_bar_t_next) - sigma_t**2) * noise_pred
             # compute x_t without "random noise"
-            noisy_latents = torch.sqrt * noise_pred + dir_xt
+            noisy_latents = torch.sqrt(alpha_bar_t_next) * noise_pred + dir_xt
             # Add noise to the sample
             noise = torch.randn_like(noisy_latents)
             noisy_latents += sigma_t * noise

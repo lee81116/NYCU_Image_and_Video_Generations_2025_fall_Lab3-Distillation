@@ -210,13 +210,11 @@ class StableDiffusion(nn.Module):
         timesteps = torch.linspace(0, target_t.item(), n_steps + 1, device=self.device).long()
 
         noisy_latents = latents
-        print("test: ", noisy_latents)
         for i in range(len(timesteps)-1):
             t = torch.full((B,), timesteps[i], device=self.device, dtype=torch.long)
             noise_pred = self.get_noise_preds(noisy_latents, t, text_embeddings, guidance_scale)
-            print("test2: ", noise_pred)
-            alpha_bar_t = self.inverse_scheduler.alphas_cumprod[timesteps[i]]
-            alpha_bar_t_next = self.inverse_scheduler.alphas_cumprod[timesteps[i+1]]
+            alpha_bar_t = self.alphas[timesteps[i]]
+            alpha_bar_t_next = self.alphas[timesteps[i+1]]
             #x0_pred = (noisy_latents - (1 - alpha_bar_t).sqrt() * noise_pred) / alpha_bar_t.sqert()
 
             sigma_t = eta                                                   \
@@ -224,7 +222,6 @@ class StableDiffusion(nn.Module):
                     * (1 - alpha_bar_t / alpha_bar_t_next).sqrt()
             
             dir_xt = ((1-alpha_bar_t_next) - sigma_t**2).sqrt() * noise_pred
-            print("test3: ", dir_xt)
             # compute x_t without "random noise"
             noisy_latents = alpha_bar_t_next.sqrt() * noise_pred + dir_xt
             # Add noise to the sample
@@ -280,7 +277,7 @@ class StableDiffusion(nn.Module):
         progress = current_iter / (total_iters - 1)
         t_value = self.max_step - progress * (self.max_step - self.min_step)
         t = torch.full((B,), int(t_value), device=self.device, dtype=torch.long)
-        w = (1.0 - self.inverse_scheduler.alphas_cumprod[t])
+        w = (1.0 - self.alphas[t])
         
         # Check if we need to update target
         should_update = (current_iter % update_interval == 0) or not hasattr(self, 'sdi_target')
@@ -301,7 +298,7 @@ class StableDiffusion(nn.Module):
 
                 # TODO: Denoise to get target x0 using predicted noise
                 # target = ... = (x_t - √(1-α_t) * ε_θ) / √α_t
-                alpha_bar_t = self.inverse_scheduler.alphas_cumprod[t]
+                alpha_bar_t = self.alphas[t]
                 target = (latents_noisy - (1 - alpha_bar_t).sqrt()*noise_pred) / alpha_bar_t.sqrt()
                 print(target)
                 # Cache the target

@@ -216,7 +216,10 @@ class StableDiffusion(nn.Module):
             alpha_bar_t = self.alphas[timesteps[i]]
             alpha_bar_t_next = self.alphas[timesteps[i+1]]
             #x0_pred = (noisy_latents - (1 - alpha_bar_t).sqrt() * noise_pred) / alpha_bar_t.sqert()
-
+            print("\nalpha_bar_t", alpha_bar_t)
+            print("alpha_bar_t_next", alpha_bar_t_next)
+            print("1.0 - alpha_bar_t", 1.0 - alpha_bar_t )
+            print("(1.0 - alpha_bar_t_next)", (1.0 - alpha_bar_t_next))
             sigma_t = eta * torch.sqrt((1.0 - alpha_bar_t_next) / (1.0 - alpha_bar_t)) * torch.sqrt(1.0 - alpha_bar_t / alpha_bar_t_next)
             print("1.", torch.sqrt((1.0 - alpha_bar_t_next) / (1.0 - alpha_bar_t)))
             print("2.", torch.sqrt(1.0 - alpha_bar_t / alpha_bar_t_next))

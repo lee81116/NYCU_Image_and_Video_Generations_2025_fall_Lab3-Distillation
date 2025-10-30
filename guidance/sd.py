@@ -219,7 +219,7 @@ class StableDiffusion(nn.Module):
 
             sigma_t = eta * torch.sqrt((1.0 - alpha_bar_t) / (1.0 - alpha_bar_t_next)) * torch.sqrt(1.0 - alpha_bar_t_next / alpha_bar_t)
             sigma_t = torch.clamp(sigma_t, min=0.0, max=1.0)
-            dir_xt = torch.sqrt(1.0-alpha_bar_t_next) * noise_pred
+            # dir_xt = torch.sqrt(1.0-alpha_bar_t_next) * noise_pred
             # compute x_t without "random noise"
             # noisy_latents = torch.sqrt(alpha_bar_t_next) * noise_pred + dir_xt
             # Add noise to the sample

@@ -228,7 +228,7 @@ class StableDiffusion(nn.Module):
             # Add noise to the sample
             noise = torch.randn_like(noisy_latents)
             noisy_latents += sigma_t * noise
-
+        print(noisy_latents)
         return noisy_latents
     
     def get_sdi_loss(
@@ -301,6 +301,7 @@ class StableDiffusion(nn.Module):
                 # target = ... = (x_t - √(1-α_t) * ε_θ) / √α_t
                 alpha_bar_t = self.inverse_scheduler.alphas_cumprod[t]
                 target = (latents_noisy - (1 - alpha_bar_t).sqrt()*noise_pred) / alpha_bar_t.sqrt()
+                print(target)
                 # Cache the target
                 self.sdi_target = target.detach()
         

@@ -216,11 +216,10 @@ class StableDiffusion(nn.Module):
             alpha_bar_t = self.alphas[timesteps[i]]
             alpha_bar_t_next = self.alphas[timesteps[i+1]]
             #x0_pred = (noisy_latents - (1 - alpha_bar_t).sqrt() * noise_pred) / alpha_bar_t.sqert()
-            
+            print(alpha_bar_t_next)
             sigma_t = eta                                                   \
                     * ((1 - alpha_bar_t_next) / (1 - alpha_bar_t)).sqrt()   \
                     * (1 - alpha_bar_t / alpha_bar_t_next).sqrt()
-            print(sigma_t)
             dir_xt = ((1-alpha_bar_t_next) - sigma_t**2).sqrt() * noise_pred
             # compute x_t without "random noise"
             noisy_latents = alpha_bar_t_next.sqrt() * noise_pred + dir_xt

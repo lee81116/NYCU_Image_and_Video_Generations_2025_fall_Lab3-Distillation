@@ -217,10 +217,9 @@ class StableDiffusion(nn.Module):
             alpha_bar_t_next = self.alphas[timesteps[i+1]]
             #x0_pred = (noisy_latents - (1 - alpha_bar_t).sqrt() * noise_pred) / alpha_bar_t.sqert()
 
-            sigma_t = eta                                                   \
-                    * torch.sqrt((1 - alpha_bar_t_next) / (1 - alpha_bar_t))   \
-                    * torch.sqrt(1 - alpha_bar_t / alpha_bar_t_next)
-            dir_xt = torch.sqrt((1-alpha_bar_t_next) - sigma_t**2) * noise_pred
+            sigma_t = eta * torch.sqrt((1.0 - alpha_bar_t_next) / (1.0 - alpha_bar_t)) * torch.sqrt(1.0 - alpha_bar_t / alpha_bar_t_next)
+            
+            dir_xt = torch.sqrt((1.0-alpha_bar_t_next) - sigma_t**2) * noise_pred
             # compute x_t without "random noise"
             noisy_latents = torch.sqrt(alpha_bar_t_next) * noise_pred + dir_xt
             # Add noise to the sample

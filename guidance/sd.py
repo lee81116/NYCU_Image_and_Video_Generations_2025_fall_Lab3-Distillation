@@ -206,26 +206,47 @@ class StableDiffusion(nn.Module):
         # You may *read* external implementations for reference, but you must
         # NOT call any "invert"/"ddim_invert"/"invert_step" utilities
         # from diffusers or other libraries.
-        B = latents.shape[0]
-        timesteps = torch.linspace(0, target_t.item(), n_steps + 1, device=self.device).long()
-
-        noisy_latents = latents
-        for i in range(len(timesteps)-1):
-            t = torch.full((B,), timesteps[i], device=self.device, dtype=torch.long)
-            noise_pred = self.get_noise_preds(noisy_latents, t, text_embeddings, guidance_scale)
-            alpha_bar_t = self.alphas[timesteps[i]]
-            alpha_bar_t_next = self.alphas[timesteps[i+1]]
-            #x0_pred = (noisy_latents - (1 - alpha_bar_t).sqrt() * noise_pred) / alpha_bar_t.sqert()
-
-            sigma_t = eta * torch.sqrt((1.0 - alpha_bar_t_next) / (1.0 - alpha_bar_t)) * torch.sqrt(1.0 - alpha_bar_t_next / alpha_bar_t)
-            dir_xt = torch.sqrt(1.0-alpha_bar_t_next) * noise_pred
-            # compute x_t without "random noise"
-            noisy_latents = torch.sqrt(alpha_bar_t_next) * noise_pred + dir_xt
-            # Add noise to the sample
-            noise = torch.randn_like(noisy_latents)
-            noisy_latents += sigma_t * noise
+        # Create inversion timestep schedule from 0 to target_t
+        # We'll take n_steps to go from x0 to x_target_t
+        timesteps = torch.linspace(0, target_t.item(), n_steps + 1, dtype=torch.long, device=self.device)
         
-        return noisy_latents
+        # Start from clean latents (x0)
+        x_t = latents.clone()
+        
+        # Inversion loop: x0 -> x_target_t
+        for i in range(len(timesteps) - 1):
+            t_curr = timesteps[i]
+            t_next = timesteps[i + 1]
+            
+            # Skip if timesteps are the same (no progress to make)
+            if t_curr == t_next:
+                continue
+            
+            alpha_bar_curr = self.inverse_scheduler.alphas_cumprod[t_curr]
+            alpha_bar_next = self.inverse_scheduler.alphas_cumprod[t_next]
+            
+            t = t_curr.unsqueeze(0).expand(x_t.shape[0])
+            noise_pred = self.get_noise_preds(x_t, t, text_embeddings, guidance_scale)
+
+            sigma = eta \
+                * torch.sqrt((1 - alpha_bar_curr) / (1 - alpha_bar_next)) \
+                * torch.sqrt(1 - alpha_bar_next / alpha_bar_curr)
+            sigma = torch.clamp(sigma, min=0.0, max=1.0)
+
+            # Original formula
+            # x_t = (alpha_bar_next/alpha_bar_curr).sqrt() * x_t + alpha_bar_next.sqrt() * ((1 / alpha_bar_next - 1).sqrt() - (1 / alpha_bar_curr - 1).sqrt()) * noise_pred
+            
+            # Original formula but get x0 first
+            x0_pred = (x_t - torch.sqrt(1 - alpha_bar_curr) * noise_pred) / torch.sqrt(alpha_bar_curr)
+            x_t = alpha_bar_next.sqrt() * (x0_pred + (((1-alpha_bar_curr)/alpha_bar_curr).sqrt()+(1/(alpha_bar_next)-1).sqrt()-(1/alpha_bar_curr-1).sqrt()) * noise_pred)
+
+
+            
+            if eta > 0:
+                noise = torch.randn_like(x_t)
+                x_t = x_t + sigma * noise
+        
+        return x_t
     
     def get_sdi_loss(
         self, 
@@ -270,12 +291,7 @@ class StableDiffusion(nn.Module):
         
         # TODO: Create current timestep tensor based on training progress
         # t = ...
-        B = latents.shape[0]
-        progress = current_iter / (total_iters - 1)
-        t_value = self.max_step - progress * (self.max_step - self.min_step)
-        t = torch.full((B,), int(t_value), device=self.device, dtype=torch.long)
-        w = (1.0 - self.alphas[t])
-        
+        t = torch.linspace(self.max_step, self.min_step, total_iters, device=self.device).long()[current_iter]
         # Check if we need to update target
         should_update = (current_iter % update_interval == 0) or not hasattr(self, 'sdi_target')
         
@@ -288,21 +304,20 @@ class StableDiffusion(nn.Module):
                     n_steps=inversion_n_steps,
                     eta=inversion_eta
                 )
-                
                 # TODO: Predict noise from inverted noisy latents
                 # noise_pred = ...
-                noise_pred = self.get_noise_preds(latents_noisy, t, text_embeddings, guidance_scale)
-
+                noise_pred = self.get_noise_preds(latents_noisy, t.unsqueeze(0).expand(B), text_embeddings,guidance_scale)
                 # TODO: Denoise to get target x0 using predicted noise
-                # target = ... = (x_t - √(1-α_t) * ε_θ) / √α_t
-                alpha_bar_t = self.alphas[t]
-                target = (latents_noisy - (1 - alpha_bar_t).sqrt()*noise_pred) / alpha_bar_t.sqrt()
+                # target = ...
+                alpha_bar_curr = self.scheduler.alphas_cumprod[t]
+                target = (latents_noisy - torch.sqrt(1 - alpha_bar_curr) * noise_pred) / torch.sqrt(alpha_bar_curr)
                 # Cache the target
                 self.sdi_target = target.detach()
         
         # TODO: Compute MSE loss between current latents and cached target
         # loss = ...
-        loss = 0.5 * nn.functional.mse_loss(latents, self.sdi_target, reduction="mean")
+        loss = F.mse_loss(latents, self.sdi_target, reduction='mean')
+        
         return loss
         
     @torch.no_grad()
